@@ -143,6 +143,7 @@ function main($path) {
 
     $slash = '/';
     if (strpos(__DIR__, ':')) $slash = '\\';
+    $drive = null;
     $_SERVER['php_starttime'] = microtime(true);
     $path = path_format($path);
     $_SERVER['PHP_SELF'] = path_format($_SERVER['base_path'] . $path);
@@ -237,7 +238,7 @@ function main($path) {
             return EnvOpt($_SERVER['needUpdate']);
         } else {
             $url = path_format($_SERVER['PHP_SELF'] . '/');
-            return output('<script>alert(\'' . getconstStr('SetSecretsFirst') . '\');</script>', 302, ['Location' => $url]);
+            return output('<meta http-equiv="refresh" content="2;URL=' . $url . '"><script>alert(\'' . getconstStr('SetSecretsFirst') . '\');</script>', 403);
         }
 
     // Add disk
@@ -384,7 +385,7 @@ function main($path) {
                         $domainforproxy = '';
                         $domainforproxy = getConfig('domainforproxy', $_SERVER['disktag']);
                         if ($domainforproxy != '') {
-                            $url = proxy_replace_domain($url, $domainforproxy, $header);
+                            $header['Location'] = proxy_replace_domain($url, $domainforproxy);
                         }
                         return output('', 302, $header);
                     } else return output($thumb_url);
@@ -452,7 +453,7 @@ function main($path) {
                     $domainforproxy = '';
                     $domainforproxy = getConfig('domainforproxy', $_SERVER['disktag']);
                     if ($domainforproxy != '') {
-                        $url = proxy_replace_domain($url, $domainforproxy, $header);
+                        $header['Location'] = proxy_replace_domain($url, $domainforproxy);
                     }
                     return output('', 302, $header);
                 } else return output('No "' . htmlspecialchars($_GET['random']) . '" files', 404);
@@ -511,7 +512,7 @@ function main($path) {
                 $domainforproxy = '';
                 $domainforproxy = getConfig('domainforproxy', $_SERVER['disktag']);
                 if ($domainforproxy != '') {
-                    $url = proxy_replace_domain($url, $domainforproxy, $header);
+                    $header['Location'] = proxy_replace_domain($url, $domainforproxy);
                 }
                 return output('', 302, $header);
             }
@@ -612,7 +613,7 @@ function compareadminsha1($adminsha1, $timestamp, $pass) {
     else return 'Error password';
 }
 
-function proxy_replace_domain($url, $domainforproxy, &$header) {
+function proxy_replace_domain($url, $domainforproxy) {
     global $drive;
     $tmp = splitfirst($url, '//');
     $http = $tmp[0];
@@ -626,10 +627,9 @@ function proxy_replace_domain($url, $domainforproxy, &$header) {
     //return $aim . '/' . $uri;
     if (strpos($url, '?') > 0) $sp = '&';
     else $sp = '?';
-    $aim .= '/' . $uri . $sp . 'Origindomain=' . $domain;
-    if ($drive->show_base_class() == 'Aliyundrive') $aim .= '&Aliyundrive';
-    $header['Location'] = $aim;
-    return $aim . '/' . $uri . $sp . 'Origindomain=' . $domain;
+    $aim .= '/' . $uri . $sp . "basedrive=" . $drive->show_base_class();
+    $aim .= '&Origindomain=' . $domain;
+    return $aim;
 }
 
 function bchexdec($hex) {
@@ -1706,7 +1706,7 @@ output:
                     $frame .= '
             <select name="' . $key . '">
                 <option value=""></option>
-                <option value="1"' . (getConfig($key) ? ' selected="selected"' : '') . '>true</option>
+                <option value="1"' . (getConfig($key, $disktag) != '' ? ' selected="selected"' : '') . '>true</option>
             </select>
             ' . getconstStr('EnvironmentsDescription')[$key];
                 } else {
@@ -2614,7 +2614,7 @@ function render_list($path = '', $files = []) {
                 }
                 //$html .= json_encode($files['folder']);
                 if ($pagenum != $maxpage) {
-                    getStackHtml($html, "NextPageStart", 0);
+                    getStackHtml($html, "NextPage", 0);
                     replaceHtml($html, "constStr@NextPage", getconstStr('NextPage'));
                     replaceHtml($html, "NextPageNum", $pagenum + 1);
                 } else {
@@ -2634,8 +2634,8 @@ function render_list($path = '', $files = []) {
                     if ($page == $pagenum) {
                         $MorePageListStr = $MorePageListNow;
                     } else {
-                        $MorePageListStr = str_replace('<!--PageNum-->', $page, $MorePageList);
-                        $MorePageListStr = str_replace('<!--PageNum-->', $page, $MorePageListStr);
+                        $MorePageListStr = $MorePageList;
+                        replaceHtml($MorePageListStr, "PageNum", $page);
                     }
                     $html .= $MorePageListStr;
                 }
